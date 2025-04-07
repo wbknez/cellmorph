@@ -1,9 +1,16 @@
 """
 Implements the neural cellular automata model for this project.
 
-This model is based on the work of
+This model is based on the work of Mordvintsev et al. (2020) and is a direct
+implementation in PyTorch.  In addition, it contains implementation details from
+Gleb Sterkin's repository on Github.
 
-# TODO: Add attribution to original work.
+## References
+  1. Mordvintsev, A., Randazzo, E., Niklasson, E. and Levin, M. (2020). Growing
+     neural cellular automata: Differentiable models of morphogenesis. Distill.
+     Retrieved from http://distill.pub/2020/growing-ca/
+  2. Sterkin, Gleb. (2020). Cellular automata pytorch. Retrieved from
+     https://github.com/belkakari/cellular-automata-pytorch
 """
 from typing import override
 
@@ -147,28 +154,29 @@ class UpdateRule(Module):
         return self._layers(x)
 
 
-class CellularMorphogensis(Module):
+class Model(Module):
+    """
+    A :class:`Module` that implements a morphogenetic model by applying
+    convolutions as an update rule on a collection of cellular automata.
     """
 
-    """
+    _perceiver: PerceptionRule
+    """The perception rule as a Sobel filter convolution."""
+
+    _updater: UpdateRule
+    """The update rule whose current weights are learned."""
 
     _state_channels: int
     """The size of the state space per cellular automata."""
 
-    _perceiver: PerceptionRule
-    """ """
-
-    _updater: UpdateRule
-    """ """
-
     _step_size: float
-    """ """
-
-    _update_rate: float
-    """The probability of a single cellular automata updating per step."""
+    """The relative amount of time that passes per step."""
 
     _threshold: float
     """The alpha channel value that denotes an active automata."""
+
+    _update_rate: float
+    """The probability of a single cellular automata updating per step."""
 
     def __init__(self, state_channels: int = 16, padding: int | str = 0,
                  update_rate: float = 0.5, step_size: int = 1.0, rotation: float
@@ -190,9 +198,18 @@ class CellularMorphogensis(Module):
                 f"State channels must be positive: {state_channels}."
             )
 
+        if isinstance(padding, str):
+            if not padding.lower() in ["same", "valid"]:
+                raise ValueError(f"Unknown padding mode: {padding}.")
+
         if not 0.0 < update_rate <= 1.0:
             raise ValueError(
                 f"Update rate must be between 0 and 1: {update_rate}."
+            )
+
+        if not 0.0 < step_size:
+            raise ValueError(
+                f"Step size must be positive: {step_size}."
             )
 
         if not 0.0 <= rotation_angle <= 2 * pi:
@@ -205,18 +222,39 @@ class CellularMorphogensis(Module):
                 f"Threshold must be between 0 and 1: {threshold}."
             )
 
-        self._perceiver = Perceiver(state_channels, rotation, normalize_kernel)
+        self._perceiver = PerceptionRule(state_channels, rotation,
+                                         normalize_kernel)
         self._updater = UpdateRule(state_channels, padding, bias)
 
         self._state_channels = state_channels
         self._step_size = step_size
-        self._update_rate = update_rate
         self._threshold = threshold
+        self._update_rate = update_rate
+
+    @property
+    def perception_rule(self) -> PerceptionRule:
+        """The current perception rule."""
+        return self._perceiver
+
+    @property
+    def update_rule(self) -> UpdateRule:
+        """The current update rule."""
+        return self._updater
 
     @property
     def state_channels(self) -> int:
         """The size of the state space per cellular automata."""
         return self._state_channels
+
+    @property
+    def step_size(self) -> float:
+        """The current time modifier per step."""
+        return self._step_size
+
+    @property
+    def threshold(self) -> float:
+        """The cutoff for an automata being considered active."""
+        return self._threshold
 
     @property
     def update_rate(self) -> float:
@@ -236,14 +274,13 @@ class CellularMorphogensis(Module):
         """
         pre_active = is_active(x, self._threshold).to(self.device)
 
-        y = self._perceive(x)
-        dx = self._layers(y) * self._step_size
+        y = self._perceiver(x)
+        dx = self._updater(y) * self._step_size
 
-        # TODO: Fix update mechanics to be correct.
         to_update = (uniform(x[:, :1, :, :].shape) <= self._update_rate).float()
-        x1 = x + (dx * to_update.to(self.device))
+        x += dx * to_update.to(self.device)
 
         post_active = is_active(x1, self._threshold).to(self.device)
         survivors = logical_and(pre_active_mask, post_active_mask).float()
 
-        return x1 * survivors
+        return x * survivors

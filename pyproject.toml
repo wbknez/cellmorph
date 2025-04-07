@@ -1,0 +1,53 @@
+# Build file for the "sirmodels" project.
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cellmorph"
+version = "0.0.1"
+description = "Neural cellular automata exploration framework."
+readme = "Readme.md"
+authors = [
+    { name = "Will Knez", email = "wknez@asu.edu" }
+]
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 5 :: Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Science/Engineering :: Mathematics",
+    "Topic :: Science/Engineering :: Visualization",
+]
+dependencies = [
+    "numpy",
+    "pillow",
+    "requests",
+    "torch"
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/wbknez/cellmorph"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+log_cli_level = "INFO"
+filterwarnings = [
+  "error",
+]
+testpaths = ["tests"]
+
+[tool.cibuildwheel]
+test-command = "pytest {project}/tests"
+test-extras = ["test"]
+test-skip = ["*universal2:arm64"]
+build-verbosity = 1

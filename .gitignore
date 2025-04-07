@@ -1,0 +1,9 @@
+**/build/**
+**/html/**
+todo.org
+todo.md
+**/__pycache__/**
+**/.ipynb_*/**
+**/**.egg-info/**
+*.csv
+**/scratch/**

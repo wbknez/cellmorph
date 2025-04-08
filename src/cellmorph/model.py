@@ -48,7 +48,7 @@ class PerceptionRule(Module):
     """
     A :class:`Module` that implements the perception step of this model by
     applying a depthwise convolution to an automata's neighborhood using a Sobel
-    filter as the weights.
+    filter as weights.
     """
 
     _weights: Parameter
@@ -118,11 +118,11 @@ class UpdateRule(Module):
         Initializes both convolution layers.
 
         Args:
-            state_channels:
-            intermediate_channels:
-            kernel_size:
-            padding:
-            use_bias:
+            state_channels: The number of state channels per automata.
+            intermediate_channels: The number of intermediate state channels.
+            kernel_size: The size of the convolution kernel.
+            padding: The amount of padding to use.
+            use_bias: Whether to compute and learn bias.
         """
         super().__init__()
 
@@ -154,10 +154,10 @@ class UpdateRule(Module):
         return self._layers(x)
 
 
-class Model(Module):
+class CellMorphModel(Module):
     """
-    A :class:`Module` that implements a morphogenetic model by applying
-    convolutions as an update rule on a collection of cellular automata.
+    A :class:`Module` that models a morphogenetic process by applying
+    convolution-based update rules to a collection of cellular automata.
     """
 
     _perceiver: PerceptionRule
@@ -179,9 +179,9 @@ class Model(Module):
     """The probability of a single cellular automata updating per step."""
 
     def __init__(self, state_channels: int = 16, padding: int | str = 0,
-                 update_rate: float = 0.5, step_size: int = 1.0, rotation: float
-                 = 0.0, threshold: float = 0.1, use_bias: bool = False,
-                 normalize_kernel: bool = False):
+                 update_rate: float = 0.5, step_size: int = 1.0,
+                 rotation: float = 0.0, threshold: float = 0.1,
+                 normalize_kernel: bool = False, use_bias: bool = False)
         """
         Initializes all relevant class fields and ensures that all inputs are
         within expected limits.

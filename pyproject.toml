@@ -26,9 +26,11 @@ classifiers = [
     "Topic :: Science/Engineering :: Visualization",
 ]
 dependencies = [
+    "loguru",
     "numpy",
     "pillow",
     "requests",
+    "tqdm",
     "torch"
 ]
 
@@ -53,3 +55,6 @@ test-command = "pytest {project}/tests"
 test-extras = ["test"]
 test-skip = ["*universal2:arm64"]
 build-verbosity = 1
+
+[project.scripts]
+cm-train = "cellmorph.app.cm_train:main"

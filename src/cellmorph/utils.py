@@ -1,49 +1,86 @@
 """
-Contains classes and functions for creating video animations from PyTorch
-tensors.
+Contains utility functions for working with PRNG seeds and PyTorch devices.
 """
+from datetime import datetime
+from math import prod
 from os import urandom
 from pathlib import Path
 from sys import byteorder
 
-from imageio import get_writer
-from numpy import float32, ndarray, uint8, zeros
-from torch import Tensor, from_numpy
+from torch import device
+from torch.backends.mps import is_available as is_mps_available
+from torch.cuda import is_available as is_cuda_available
+from torch.nn import Module
+from tqdm import tqdm
 
 
-def create_model_seed(width: int, height: int, state_channels: int) -> Tensor:
+def choose_device(override: int | str | device | None = None) -> device:
     """
-    Creates a new empty tensor for model consumption with a single active
-    automata.
+    Finds the most advanced computing device available on the current platform.
 
-    The active automata is always in the center (width and height divided by
-    two).
+    The order of precedence is: CUDA, MPS, and default CPU.  This order is
+    followed if `override` is empty.
+
+    This function is adapted from Martin Mullang's blogpost "Simplifying PyTorch
+    Device Selection" at: https://mctm.web.id/blog/2024/PyTorchGPUSelect/.
 
     Args:
-        width: The width of the seed image in pixels.
-        height: The height of the seed image in pixels.
-        state_channels: The number of state channels per pixel.
+        override: The device identifier to use regardless; optional.
 
     Returns:
-        A new model seed as a three-dimensional tensor.
+        A PyTorch device.
     """
-    if width < 1:
-        raise ValueError(f"Width must be positive: {width}.")
+    if not override:
+        if is_cuda_available():
+            return device("cuda")
+        elif is_mps_available():
+            return device("mps")
+        else:
+            return device("cpu")
 
-    if height < 1:
-        raise ValueError(f"Height must be positive: {height}.")
-
-    if state_channels < 1:
-        raise ValueError(f"State channels must be positive: {state_channels}.")
-
-    x = zeros((state_channels, height, width), dtype=float32)
-
-    x[3:, height // 2, width // 2] = 1.0
-
-    return from_numpy(x)
+    return device(override)
 
 
-def create_random_seed(bytes: int = 8) -> int:
+def combine_dicts(original: dict[str, object],
+                  updates: dict[str, object]) -> dict[str, object]:
+    """
+    Combines the keys and values of one dictionary into another.
+
+    Args:
+        original: A dictionary to modify.
+        updates: A dictionary of keys and values to update.
+
+    Returns:
+        A combined dictionary.
+    """
+    for key, value in updates.items():
+        if isinstance(value, dict):
+            original_value = original.get(key, {})
+
+            if isinstance(original_value, dict):
+                combine_dicts(original_value, value)
+            else:
+                original[key] = value
+        else:
+            original[key] = value
+
+    return original
+
+
+def count_parameters(model: Module) -> int:
+    """
+    Computes the total number of trainable parameters in a model.
+
+    Args:
+        model: The model to search.
+
+    Returns:
+        The number of parameters as an integer.
+    """
+    return sum([prod(param.size()) for param in model.parameters()])
+
+
+def random_bytes(bytes: int = 8) -> int:
     """
     Creates a single 64-bit random number using a system's `/dev/urandom`.
 
@@ -60,105 +97,111 @@ def create_random_seed(bytes: int = 8) -> int:
     return int.from_bytes(urandom(bytes), byteorder)
 
 
-def to_rgb_array(x: Tensor, premultiply: bool = False) -> ndarray[uint8]:
+def unique_name(model_name: str, timestamp: datetime | None = None,
+                format: str | None = None) -> Path:
     """
-    Converts a model output tensor to an array of RGB values.
+    Creates a unique folder base name based on the current timestamp.
 
     Args:
-        x: The model output to convert as a four-dimensional tensor.
-        premultiply: Whether to multiply the RGB components by any alpha values.
+        model_name: The name of the model.
+        timestamp: The time to incorporate into the unique name.
+        format: How to incorporate the name and timestamp information into a
+        unique signature.
 
     Returns:
-        An RGB image as an array of unsigned integers.
+        A unique name as a standard string.
     """
-    rgb = x[:, :3, :, :].clip(min=0.0, max=1.0)
-    alpha = x[:, 3:4, :, :].clip(min=0.0, max=1.0)
+    if not timestamp:
+        timestamp = datetime.now()
 
-    if premultiply:
-        rgb *= alpha
+    if not format:
+        format = "{}-%d%m%Y-%H%M"
 
-    return ((1.0 - alpha + rgb).numpy() * 255.0).astype(uint8)
+    return timestamp.strftime(format.format(model_name))
 
 
-class Animation:
+class Stopwatch:
     """
-    A context manager that wraps a single :class:`Writer` instance used to
-    create video animations from single image frames.
+    A simple class to compute elapsed time for processes that perform
+    significant work.
     """
 
-    _video_path: Path
-    """The full path to the resulting video file."""
+    _start: datetime
+    """The start time."""
 
-    _format: str
-    """The video encoding format."""
+    _end: datetime
+    """The stop time."""
 
-    _fps: int
-    """The number of frames per second during recording."""
+    def __init__(self):
+        self._start = None
+        self._end = None
 
-    def __init__(self, base_dir: Path, base_name: str, format: str = None,
-                 fps: int = 25):
+    def start(self):
         """
+        Assigns the current time as the start time.
+        """
+        self._start = datetime.now()
+
+    def stop(self):
+        """
+        Assigns current time as the end time.
+        """
+        self._end = datetime.now()
+
+    def elapsed(self, format: str | None = None) -> str:
+        """
+        Computes the elapsed time and formats it as appropriate for visual
+        display.
 
         Args:
-            base_dir: The directory to save the video file.
-            base_name: The name of the file to write without an extension.
-            format: The video format to use (avi, mp4, etc.).
-            fps: The number of frames per second to record.
+            format: The output format to use.
+
+        Returns:
+            The elapsed time as a formatted string.
         """
         if not format:
-            format = "mp4"
+            format = "{} hours, {} minutes, and {} seconds"
 
-        self._video_path = (base_path / f"{base_name}.{format}").resolve()
-        self._format = format
-        self._fps = fps
+        elapsed = self._end - self._start
 
-    @property
-    def format(self) -> str:
-        """The video encoding format."""
-        return self._format
+        hours = elapsed.seconds // 3600
+        minutes = (elapsed.seconds % 3600) // 60
+        seconds = elapsed.seconds % 60
 
-    @property
-    def fps(self) -> int:
-        """The frames per second during recording."""
-        return self._fps
+        if hours == 1:
+            format = format.replace("hours", "hour")
 
-    @property
-    def video_path(self) -> Path:
-        """The full path to a video file."""
-        return self._video_path
+        if minutes == 1:
+            format = format.replace("minutes", "minute")
 
-    def __enter__(self):
+        if seconds == 1:
+            format = format.replace("seconds", "second")
+
+        return format.format(hours, minutes, seconds)
+
+
+class TqdmSink:
+    """
+    Wraps :meth:`tqdm.write` in an object Loguru can use to send log messages
+    and subsequently display them.
+    """
+
+    def write(self, message: str):
         """
-        Opens a new video stream with a specific encoding.
-
-        Raises:
-            FileExistsError: If `video_path` already exists.
-        """
-        if not self._writer:
-            if self._video_path.exists():
-                raise FileExistsError(
-                    f"Cannot create video: {self._video_path} already exists."
-                )
-
-            self._writer = get_writer(self._video_path, format=self._format,
-                                      mode="I", fps=self._fps)
-
-    def __exit__(self, **kwargs):
-        """
-        Closes this video stream if active.
-        """
-        if self._writer:
-            self._writer.close()
-
-    def add_frame(self, x: Tensor, premultiply: bool = False):
-        """
-        Adds a single image frame to this video stream.
+        Writes a formatted message to the console using TQDM's facilities to
+        display it above any active progress bars.
 
         Args:
-            x: The model output to encode.
-            premultiply: Whether to multiply the RGB components by any alpha
-            values.
+            message: The message to display.
         """
-        frame = to_rgb_array(x, premultiply)
+        tqdm.write(message, end="")
 
-        self._writer.append_data(frame)
+    def stop(self):
+        """
+        Intended for stopping continously active resources.
+
+        For this class, no action is needed.
+        """
+        pass
+
+

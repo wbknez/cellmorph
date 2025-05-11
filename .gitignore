@@ -7,3 +7,5 @@ todo.md
 **/**.egg-info/**
 *.csv
 **/scratch/**
+**/model-output/**
+**/model_output/**

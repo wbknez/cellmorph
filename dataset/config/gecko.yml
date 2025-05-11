@@ -1,0 +1,35 @@
+name: "gecko"
+output_dir: "./model_output"
+test_frequency: 0
+data:
+  target: "🦎"
+  sample_count: 1024
+  max_size:
+    width: 40
+    height: 40
+  padding: 16
+  premultiply: True
+  cache_dir: "./dataset/emojis"
+model:
+  state_channels: 16
+  hidden_channels: 128
+  normalize_kernel: False
+  padding: 0
+  rotation: 0.0
+  step_size: 1.0
+  threshold: 0.1
+  update_rate: 0.5
+  use_bias: False
+optim:
+  milestones:
+    - 2000
+  gamma: 0.1
+  learning_rate: 0.002
+  gradient_cutoff: 20
+train:
+  strategy: "persistent"
+  batch_size: 8
+  steps:
+    min: 64
+    max: 96
+  epochs: 8000

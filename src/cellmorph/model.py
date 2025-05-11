@@ -12,14 +12,30 @@ Gleb Sterkin's repository on Github.
   2. Sterkin, Gleb. (2020). Cellular automata pytorch. Retrieved from
      https://github.com/belkakari/cellular-automata-pytorch
 """
+from __future__ import annotations
 from typing import override
 
-from numpy import cos as npCos, pi, sin as npSin
-from torch import Tensor, float32, from_numpy, logical_and, outer, stack, tensor
+from numpy import cos, sin
+from torch import (
+    Tensor,
+    compile as torch_compile,
+    float32,
+    from_numpy,
+    logical_and,
+    outer,
+    rand as uniform,
+    save,
+    stack,
+    tensor
+)
 from torch.distributions import Bernoulli
 from torch.nn import Conv2d, Module, Parameter, ReLU, Sequential
 from torch.nn.functional import conv2d, max_pool2d
 from torch.nn.init import constant_
+from torch.nn.utils import clip_grad_norm_
+
+
+COMPILED_PREFIX = "_orig_mod."
 
 
 def is_active(x: Tensor, threshold: float = 0.1) -> Tensor:
@@ -57,7 +73,7 @@ class PerceptionRule(Module):
     _state_channels: int
     """The size of the state space per cellular automata."""
 
-    def __init__(self, state_channels: int, rotation: float,
+    def __init__(self, state_channels: int, rotation: float = 0.0,
                  normalize: bool = False):
         """
         Initializes the Sobel filter for this model.
@@ -75,8 +91,8 @@ class PerceptionRule(Module):
         dx = outer(tensor([1, 2, 1]), tensor([-1, 0, 1])) / 8.0
         dy = dx.T.flipud()
 
-        c = npCos(rotation)
-        s = npSin(rotation)
+        c = cos(rotation)
+        s = sin(rotation)
 
         kernel = stack([identify, c * dx - s * dy, s * dx + c * dy])
         kernel = kernel.repeat(state_channels, 1, 1).unsqueeze(1)
@@ -90,7 +106,7 @@ class PerceptionRule(Module):
     @override
     def forward(self, x: Tensor) -> Tensor:
         """
-        Apply perception rule to all automata.
+        Apply a perception "rule" to all automata.
 
         Evaluates each automata's neighborhood in a Moore neighborhood of radius
         one (three by three).
@@ -111,15 +127,15 @@ class UpdateRule(Module):
     of convolutions.
     """
 
-    def __init__(self, state_channels: int, intermediate_channels: int = 128,
-                 kernel_size: int = 1, padding: int | str = 0,
+    def __init__(self, state_channels: int, hidden_channels: int = 128,
+                 kernel_size: int = 1, padding: int = 0,
                  use_bias: bool = False):
         """
         Initializes both convolution layers.
 
         Args:
             state_channels: The number of state channels per automata.
-            intermediate_channels: The number of intermediate state channels.
+            hidden_channels: The number of hidden state channels.
             kernel_size: The size of the convolution kernel.
             padding: The amount of padding to use.
             use_bias: Whether to compute and learn bias.
@@ -129,11 +145,10 @@ class UpdateRule(Module):
         l1_in_channels = state_channels * 3
 
         self._layers = Sequential(
-            Conv2d(in_channels=l1_in_channels,
-                   out_channels=intermediate_channels, kernel_size=kernel_size,
-                   padding=padding),
+            Conv2d(in_channels=l1_in_channels, out_channels=hidden_channels,
+                   kernel_size=kernel_size, padding=padding),
             ReLU(),
-            Conv2d(in_channels=intermediate_channels, out_channels=state_channels,
+            Conv2d(in_channels=hidden_channels, out_channels=state_channels,
                    kernel_size=kernel_size, padding=padding, bias=use_bias)
         )
 
@@ -146,7 +161,7 @@ class UpdateRule(Module):
     @override
     def forward(self, x: Tensor) -> Tensor:
         """
-        Applies the update "rule" to all automata as a pair of convolutions.
+        Applies an update "rule" to all automata as a pair of convolutions.
 
         Args:
             x: The current model state.
@@ -154,7 +169,7 @@ class UpdateRule(Module):
         return self._layers(x)
 
 
-class CellMorphModel(Module):
+class Model(Module):
     """
     A :class:`Module` that models a morphogenetic process by applying
     convolution-based update rules to a collection of cellular automata.
@@ -178,10 +193,14 @@ class CellMorphModel(Module):
     _update_rate: float
     """The probability of a single cellular automata updating per step."""
 
-    def __init__(self, state_channels: int = 16, padding: int | str = 0,
+    _is_compiled: bool
+    """Whether this model has been compiled using :meth:`torch.compile`."""
+
+    def __init__(self, state_channels: int = 16,
+                 hidden_channels: int = 128, padding: int = 0,
                  update_rate: float = 0.5, step_size: int = 1.0,
                  rotation: float = 0.0, threshold: float = 0.1,
-                 normalize_kernel: bool = False, use_bias: bool = False)
+                 normalize_kernel: bool = False, use_bias: bool = False):
         """
         Initializes all relevant class fields and ensures that all inputs are
         within expected limits.
@@ -193,43 +212,28 @@ class CellMorphModel(Module):
         """
         super().__init__()
 
-        if state_channels <= 0:
-            raise ValueError(
-                f"State channels must be positive: {state_channels}."
-            )
-
-        if isinstance(padding, str):
-            if not padding.lower() in ["same", "valid"]:
-                raise ValueError(f"Unknown padding mode: {padding}.")
-
-        if not 0.0 < update_rate <= 1.0:
-            raise ValueError(
-                f"Update rate must be between 0 and 1: {update_rate}."
-            )
-
-        if not 0.0 < step_size:
-            raise ValueError(
-                f"Step size must be positive: {step_size}."
-            )
-
-        if not 0.0 <= rotation_angle <= 2 * pi:
-            raise ValueError(
-                f"Rotation angle must be between 0 and 2pi: {rotation_angle}."
-            )
-
-        if not 0.0 < threshold <= 1.0:
-            raise ValueError(
-                f"Threshold must be between 0 and 1: {threshold}."
-            )
-
         self._perceiver = PerceptionRule(state_channels, rotation,
                                          normalize_kernel)
-        self._updater = UpdateRule(state_channels, padding, bias)
+        self._updater = UpdateRule(state_channels, hidden_channels, 1,
+                                   padding, use_bias)
 
         self._state_channels = state_channels
         self._step_size = step_size
         self._threshold = threshold
         self._update_rate = update_rate
+        self._is_compiled = False
+
+    @property
+    def is_compiled(self) -> bool:
+        """
+        Whether this model has been compiled with :meth:`torch.compile`.
+
+        Please note that this property is only reliable if the accompanying
+        function :meth:`Model.compile` is used to compile this model.
+        Otherwise, the result may be inaccurate because :meth:`torch.compile`
+        produces a wrapper module that forwards calls to the original model.
+        """
+        return self._is_compiled
 
     @property
     def perception_rule(self) -> PerceptionRule:
@@ -261,7 +265,30 @@ class CellMorphModel(Module):
         """The probability of a single cellular automata updating per step."""
         return self._update_rate
 
-    @override
+    def clip_gradient_norms(self, gradient_cutoff: float):
+        """
+        Restricts the value of all gradient norms in the update rule to be less
+        than a specific value.
+
+        Args:
+        """
+        clip_grad_norm_(self._updater.parameters(), gradient_cutoff)
+
+    def compile(self) -> Module:
+        """
+        Compiles this model using :meth:`torch.compile`.
+
+        Please note that this function does not compile in-place; similar to
+        :meth:`Module.to`, it returns a reference to a new instance (copy) of
+        the original model in compiled form.
+
+        Returns:
+            A compiled model.
+        """
+        self._is_compiled = True
+
+        return torch_compile(self)
+
     def forward(self, x: Tensor) -> Tensor:
         """
         Performs a single forward pass of this NCA model.
@@ -272,15 +299,32 @@ class CellMorphModel(Module):
         Returns:
             Computed model output as a tensor.
         """
-        pre_active = is_active(x, self._threshold).to(self.device)
+        pre_active = is_active(x, self._threshold)
 
         y = self._perceiver(x)
         dx = self._updater(y) * self._step_size
 
         to_update = (uniform(x[:, :1, :, :].shape) <= self._update_rate).float()
-        x += dx * to_update.to(self.device)
+        x1 = x + dx * to_update.to(x.device)
 
-        post_active = is_active(x1, self._threshold).to(self.device)
-        survivors = logical_and(pre_active_mask, post_active_mask).float()
+        post_active = is_active(x1, self._threshold)
+        survivors = logical_and(pre_active, post_active).float().unsqueeze(1)
 
-        return x * survivors
+        return x1 * survivors.to(x.device)
+
+    def save(self, weights_path: Path):
+        """
+        Saves the weights of this model to a specific file path.
+
+        Args:
+            weights_path: The file location to save to.
+        """
+        weights = self.state_dict()
+
+        if self.is_compiled:
+            for key, value in weights.items():
+                if key.startswith(COMPILED_PREFIX):
+                    weights[key.replace(COMPILED_PREFIX, "")] = value
+                    del weights[key]
+
+        save(weights, weights_path)

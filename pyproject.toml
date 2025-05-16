@@ -30,8 +30,9 @@ dependencies = [
     "numpy",
     "pillow",
     "requests",
-    "tqdm",
-    "torch"
+    "torch",
+    "torchvision",
+    "tqdm"
 ]
 
 [project.optional-dependencies]
@@ -57,4 +58,4 @@ test-skip = ["*universal2:arm64"]
 build-verbosity = 1
 
 [project.scripts]
-cm-train = "cellmorph.app.cm_train:main"
+cm-train = "cellmorph.app.cm_train:launch"

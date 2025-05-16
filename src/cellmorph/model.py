@@ -22,6 +22,7 @@ from torch import (
     compile as torch_compile,
     float32,
     from_numpy,
+    load,
     logical_and,
     outer,
     rand as uniform,
@@ -61,6 +62,34 @@ def is_active(x: Tensor, threshold: float = 0.1) -> Tensor:
     objs = max_pool2d(input=alpha, kernel_size=3, stride=1, padding=1)
 
     return objs > threshold
+
+
+def strip_compilation_prefix(weights: dict[str, Tensor],
+                             prefix: str) -> dict[str, Tensor]:
+    """
+    Removes the compilation prefix (typically "_orig_mod.") from any weight
+    names that contain it.
+
+    This prefix is automatically appended to all weights after the model is
+    compiled using `torch.compile`.  This function is necessary because the
+    `OptimizedModel` returned from PyTorch's compilation process overrides
+    `state_dict`, providing a copy of all weights prefixed with an identifier to
+    separate them from the original model.  However, these values are identical
+    but this process makes it impossible for uncompiled models to load these
+    weights.
+
+    Args:
+        weights: The mapping of weight names to current values.
+        prefix: The prefix to remove from any matching keys.
+
+    Returns:
+        A weight dictionary.
+    """
+    for key, value in weights.items():
+        if key.startswith(prefix):
+            weights[key.replace(prefix, "")] = weights.pop(key)
+
+    return state_dict
 
 
 class PerceptionRule(Module):
@@ -310,19 +339,34 @@ class Model(Module):
 
         return x1 * survivors.to(x.device)
 
+    def load(self, weights_path: Path) -> Model:
+        """
+        Loads all layer weights from a specific file path.
+
+        Please note that this should be done **before** compilation.  The weight
+        files for this project assume that uncompiled models will load their
+        weights first before compilation.
+
+        Args:
+            weights_path: The file location to load weights from.
+
+        Returns:
+            A reference to this model for easy chaining.
+        """
+        self.load_state_dict(load(weights_path, weights_only=True))
+
+        return self
+
     def save(self, weights_path: Path):
         """
         Saves the weights of this model to a specific file path.
 
         Args:
-            weights_path: The file location to save to.
+            weights_path: The file location to save weights to.
         """
         weights = self.state_dict()
 
         if self.is_compiled:
-            for key, value in weights.items():
-                if key.startswith(COMPILED_PREFIX):
-                    weights[key.replace(COMPILED_PREFIX, "")] = value
-                    del weights[key]
+            weights = strip_compilation_prefix(weights, COMPILED_PREFIX)
 
         save(weights, weights_path)

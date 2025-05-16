@@ -288,9 +288,6 @@ class ModelConfiguration:
     normalize_kernel: bool
     """Whether to normalize the Sobel kernel."""
 
-    padding: int
-    """The amount of network layer padding."""
-
     rotation: float
     """The target image's angle of rotation."""
 
@@ -317,9 +314,6 @@ class ModelConfiguration:
         if self.hidden_channels < 1:
             raise ValueError(f"Intermediate channels must be positive: "
                              f"{self.intermediate_channels}.")
-
-        if self.padding < 0:
-            raise ValueError(f"Padding cannot be negative: {self.padding}.")
 
         if not 0.0 <= self.rotation < (2.0 * pi):
             raise ValueError(f"Rotation must be in [0, 2pi]: {self.rotation}.")
@@ -474,21 +468,35 @@ class Configuration:
         Args:
             file_path: The location to write to.
         """
-        data = asdict(self)
+        values = self.to_dict()
 
-        data["output_dir"] = str(self.output_dir)
-        data["data"]["max_size"] = {
+        values["output_dir"] = str(self.output_dir)
+        values["data"]["cache_dir"] = str(self.data.cache_dir)
+
+        with open(file_path, "w") as f:
+            f.write(dump(values))
+
+    def to_dict(self) -> YAML:
+        """
+        Converts this configuration to a dictionary of key/value pairs suitable
+        for writing to a YAML file or other forms of modification.
+
+        Returns:
+            All configuration values as a dictionary.
+        """
+        values = asdict(self)
+
+        values["data"]["max_size"] = {
             "width": self.data.max_size.width,
             "height": self.data.max_size.height
         }
-        data["data"]["cache_dir"] = str(self.data.cache_dir)
-        data["train"]["steps"] = {
+        values["train"]["steps"] = {
             "min": self.train.steps.a,
             "max": self.train.steps.b
         }
 
-        with open(file_path, "w") as f:
-            f.write(dump(data))
+        return values
+
 
     @classmethod
     def from_dict(cls, values: YAML) -> Configuration:
@@ -523,7 +531,6 @@ class Configuration:
                 state_channels=get_int(model, "state_channels", 16),
                 hidden_channels=get_int(model, "hidden_channels", 128),
                 normalize_kernel=get_bool(model, "normalize_kernel", False),
-                padding=get_int(model, "padding", 0),
                 rotation=get_float(model, "rotation", 0.0),
                 step_size=get_float(model, "step_size", 1.0),
                 threshold=get_float(model, "threshold", 0.1),

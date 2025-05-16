@@ -2,12 +2,14 @@
 
 
 """
+Fully trains a neural cellular automata model.
 
 Command-line Arguments:
     - "-c"/"--config-file": The path to a configuration file containing all
       necessary values and parameters to both create a model and train it.  This
       path may be either absolute or relative; however, it must obviously exist
       in order for the program to continue.
+    - "-e"/"--epochs": 
     - "-l"/"--logging-level": The global logging level that determines which
       logging messages appear in the model-specific log file.  Any option other
       than "off" will filter messages such that if a message's level is beneath
@@ -22,7 +24,6 @@ Command-line Arguments:
       handlers that write to those streams.
 """
 from argparse import ArgumentParser, Namespace
-from dataclasses import dataclass, field
 from pathlib import Path
 from sys import exit, stdout
 
@@ -33,6 +34,7 @@ from tqdm import tqdm
 from cellmorph.config import Configuration
 from cellmorph.factory import ConfigurationFactory
 from cellmorph.model import Model
+from cellmorph.training import Losses
 from cellmorph.utils import Stopwatch, TqdmSink, choose_device, unique_name
 
 
@@ -43,39 +45,6 @@ LOG_FORMAT = (
     "<level>{message}</level>"
 )
 """The logging message format for this project."""
-
-
-@dataclass(slots=True)
-class Losses:
-    """
-    A wrapper around a collection of generated per-epoch loss values.
-    """
-
-    _values: list[int] = field(default_factory=list)
-    """A collection of loss values."""
-
-    def append(self, loss: float):
-        """
-        Adds a single loss value to the collection of losses.
-
-        Args:
-            loss: The loss value to add.
-        """
-        self._values.append(loss)
-
-    def save(self, file_path: Path):
-        """
-        Writes all accumulated loss values to a file using CSV (comma separated
-        values) format.
-
-        Args:
-            file_path: The path to write to.
-        """
-        values = array(self._values)
-
-        with open(file_path, "w") as f:
-            f.write("Loss\n")
-            savetxt(f, values, delimiter=",")
 
 
 def create_model_dir(name: str, output_dir: Path, parents: bool = True) -> Path:
@@ -106,6 +75,9 @@ def create_progress_bar(epochs: int, disabled: bool) -> tqdm:
     Creates a :class:`tqdm` progress bar that provides a real-time display of
     completed training epochs.
 
+    This progress bar will disappear at the end of a successfully training
+    session.
+
     Args:
         epochs: The number of epochs to train.
         disabled: Whether to display the progress bar.
@@ -113,7 +85,7 @@ def create_progress_bar(epochs: int, disabled: bool) -> tqdm:
     Returns:
         A textual progress bar.
     """
-    r_bar = "| {n_fmt}/{total_fmt} {unit} ({elapsed})"
+    r_bar = "| {n_fmt}/{total_fmt} {unit} ({elapsed}/{remaining})"
 
     return tqdm(
         iterable=range(epochs),
@@ -129,6 +101,21 @@ def create_progress_bar(epochs: int, disabled: bool) -> tqdm:
     )
 
 
+def combine_with_args(config: Configuration, args: Namespace) -> Configuration:
+    """
+
+    """
+    values = config.to_dict()
+
+    if args.name:
+        values["name"] = args.name
+
+    if args.epochs:
+        values["train"]["epochs"] = args.epochs
+
+    return Configuration.from_dict(values)
+
+
 def save(model_dir: Path, config: Configuration, model: Model, losses: Losses):
     """
     Writes both the model weights (per library recommendation) and the
@@ -140,14 +127,19 @@ def save(model_dir: Path, config: Configuration, model: Model, losses: Losses):
         model: The model weights to save.
         losses: A collection of per-epoch losses.
     """
+    logger.debug("Saving model weights to: {}.", model_dir / "weights.pth")
     model.save(model_dir / "weights.pth")
-    logger.info("Model saved to: {}.", model_dir / "weights.pth")
+    logger.info("Model weights saved sucessfully to: {}.",
+                model_dir / "weights.pth")
 
+    logger.debug("Saving losses to: {}.", model_dir / "losses.csv")
     losses.save(model_dir / "losses.csv")
-    logger.info("Losses saved to: {}.", model_dir / "losses.csv")
+    logger.info("Losses saved successfully to: {}.", model_dir / "losses.csv")
 
+    logger.debug("Copying configuration to: {}.", model_dir / "config.yml")
     config.save(model_dir / "config.yml")
-    logger.info("Configuration copied to: {}.", model_dir / "config.yml")
+    logger.info("Configuration copied successfully to: {}.",
+                model_dir / "config.yml")
 
 
 def parse_args() -> Namespace:
@@ -185,10 +177,12 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-@logger.catch
-def main() -> int:
+def main(args: Namespace) -> int:
     """
     The application entry point for this project.
+
+    Args:
+        args: A collection of command line arguments and their values, if any.
 
     Returns:
         An exit code.
@@ -196,12 +190,9 @@ def main() -> int:
     logger.remove()
     logger.add(stdout, format=LOG_FORMAT, level="ERROR", colorize=True)
 
-    args = parse_args()
     device = choose_device()
-
-    config = Configuration.from_file(args.config_path)
-    model_dir = create_model_dir(config.name if not args.name else args.name, 
-                                 config.output_dir)
+    config = combine_with_args(Configuration.from_file(args.config_path), args)
+    model_dir = create_model_dir(config.name, config.output_dir)
 
     if args.logging_level != "OFF":
         logger.add(model_dir / "logs.txt", format=LOG_FORMAT,
@@ -238,15 +229,14 @@ def main() -> int:
     trainer = ConfigurationFactory.trainer(config, model)
     logger.debug("Trainer created successfully.")
 
-    epochs = config.train.epochs if not args.epochs else args.epochs
     losses = Losses()
     timer = Stopwatch()
 
     timer.start()
 
-    logger.info("Beginning training for {} epochs.", epochs)
-    for i in create_progress_bar(epochs, args.quiet):
-        logger.info("Starting epoch {} of {}.", i, epochs)
+    logger.info("Beginning training for {} epochs.", config.train.epochs)
+    for i in create_progress_bar(config.train.epochs, args.quiet):
+        logger.info("Starting epoch {} of {}.", i, config.train.epochs)
 
         model.train()
         loss = trainer.epoch(pool, device)
@@ -258,6 +248,20 @@ def main() -> int:
 
     save(model_dir, config, model, losses)
 
+    return 0
+
+
+def launch():
+    """
+    pass
+    """
+    try:
+        main(args=parse_args())
+        exit(0)
+    except Exception as e:
+        logger.exception(e)
+        exit(1)
+
 
 if __name__ == "__main__":
-    exit(main())
+    launch()

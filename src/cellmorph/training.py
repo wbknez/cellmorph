@@ -2,10 +2,11 @@
 Contains classes and functions pertaining to training the neural cellular
 automata model in this project.
 """
-from dataclasses import astuple, dataclass
+from dataclasses import astuple, dataclass, field
 from pathlib import Path
 
 from loguru import logger
+from numpy import array, float64, savetxt
 from PIL import Image as ImageFactory
 from PIL.Image import Image
 from torch import (
@@ -118,10 +119,57 @@ class Interval:
         return randint(self.a, self.b, (1,)).item()
 
 
+@dataclass(frozen=True, slots=True)
+class Losses:
+    """
+    A wrapper around a collection of generated per-epoch loss values.
+    """
+
+    _values: list[int] = field(default_factory=list)
+    """A collection of loss values."""
+
+    def append(self, loss: float):
+        """
+        Adds a single loss value to the collection of losses.
+
+        Args:
+            loss: The loss value to add.
+        """
+        self._values.append(loss)
+
+    def save(self, file_path: Path, header: bool = True):
+        """
+        Writes all accumulated loss values to a file using CSV (comma separated
+        values) format.
+
+        Args:
+            file_path: The path to write to.
+            header: Whether to include a column identifier at the start of the
+            column of data values.
+        """
+        values = array(self._values, dtype=float64)
+
+        with open(file_path, "w") as f:
+            if header:
+                f.write("Loss\n")
+            savetxt(f, values, delimiter=",")
+
+
 class Trainer:
     """
     Trains a model over one or more epochs.
     """
+
+    __slots__ = (
+        "_model",
+        "_strategy",
+        "_steps",
+        "_gradient_cutoff",
+        "_optimizer",
+        "_scheduler",
+        "_batch_criterion",
+        "_sample_criterion"
+    )
 
     _model: Model
     """A model to train."""

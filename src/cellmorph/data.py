@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import NamedTuple, override
 
-from torch import Tensor, linspace, zeros
+from torch import Tensor, equal, linspace, zeros
 from torch.distributions.uniform import Uniform
 from torch.utils.data import DataLoader, RandomSampler, Sampler, TensorDataset
 
@@ -202,14 +202,12 @@ class IndexingDataset(TensorDataset):
         super().__init__(samples, targets)
 
     @override
-    def __len__(self) -> int:
-        """
-        Returns the number of training images this dataset can provide.
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, IndexingDataset):
+            return equal(self.samples, other.samples) and \
+                equal(self.targets, other.targets)
 
-        Returns:
-            The number of available training images.
-        """
-        return len(self.tensors[0])
+        return NotImplemented
 
     @override
     def __getitem__(self, index: int | Tensor) -> Sample:
@@ -224,6 +222,20 @@ class IndexingDataset(TensorDataset):
             A tuple containing both a training image and target image.
         """
         return Sample(index, self.tensors[0][index], self.tensors[1][index])
+
+    @override
+    def __len__(self) -> int:
+        """
+        Returns the number of training images this dataset can provide.
+
+        Returns:
+            The number of available training images.
+        """
+        return len(self.tensors[0])
+
+    @override
+    def __ne__(self, other: object) -> bool:
+        return not self == other
 
     @property
     def samples(self) -> Tensor:
@@ -240,6 +252,8 @@ class UpdateStrategy(ABC):
     """
     Updates one or more samples in a dataset on a per batch basis.
     """
+
+    __slots__ = ("_initial_state")
 
     _initial_state: Tensor
     """A single, distinct seed to apply as an initial starting state."""
@@ -290,6 +304,8 @@ class GrowthStrategy(UpdateStrategy):
     This strategy implements the first "experiment" in the original paper.
     """
 
+    __slots__ = ()
+
     def __init__(self, initial_state: Tensor):
         super().__init__(initial_state)
 
@@ -318,6 +334,8 @@ class PersistentStrategy(UpdateStrategy):
     retaining well-performing outputs the model is better able to learn to both
     grow and stop (i.e. persist) instead of continuous infinite growth.
     """
+
+    __slots__ = ("_reset_count")
 
     _reset_count: int
     """
@@ -377,6 +395,8 @@ class RegenerativeStrategy(PersistentStrategy):
     applying damage masks to the best outputs, the model is able to learn to
     repair those damaged regions.
     """
+
+    __slots__ = ("_damage_count")
 
     _damage_count: int
     """

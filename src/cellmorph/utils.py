@@ -1,6 +1,7 @@
 """
 Contains utility functions for working with PRNG seeds and PyTorch devices.
 """
+from dataclasses import dataclass
 from datetime import datetime
 from math import prod
 from os import urandom
@@ -120,6 +121,7 @@ def unique_name(model_name: str, timestamp: datetime | None = None,
     return timestamp.strftime(format.format(model_name))
 
 
+@dataclass(slots=True)
 class Stopwatch:
     """
     A simple class to compute elapsed time for processes that perform
@@ -185,6 +187,8 @@ class TqdmSink:
     Wraps :meth:`tqdm.write` in an object Loguru can use to send log messages
     and subsequently display them.
     """
+
+    __slots__ = ()
 
     def write(self, message: str):
         """

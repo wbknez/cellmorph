@@ -87,7 +87,6 @@ class ConfigurationFactory:
         return Model(
             state_channels=config.model.state_channels,
             hidden_channels=config.model.hidden_channels,
-            padding=config.model.padding,
             update_rate=config.model.update_rate,
             step_size=config.model.step_size,
             rotation=config.model.rotation,

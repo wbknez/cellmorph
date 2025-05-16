@@ -11,6 +11,7 @@ Gleb Sterkin's repository on Github.
      Retrieved from http://distill.pub/2020/growing-ca/
   2. Sterkin, Gleb. (2020). Cellular automata pytorch. Retrieved from
      https://github.com/belkakari/cellular-automata-pytorch
+  3. 
 """
 from __future__ import annotations
 from typing import override
@@ -36,6 +37,8 @@ from torch.nn.utils import clip_grad_norm_
 
 
 COMPILED_PREFIX = "_orig_mod."
+"""Key prefix used by PyTorch in :meth:`Model.state_dict()` to denote weights
+inherited from a non-compiled model."""
 
 
 def is_active(x: Tensor, threshold: float = 0.1) -> Tensor:
@@ -128,7 +131,6 @@ class UpdateRule(Module):
     """
 
     def __init__(self, state_channels: int, hidden_channels: int = 128,
-                 kernel_size: int = 1, padding: int = 0,
                  use_bias: bool = False):
         """
         Initializes both convolution layers.
@@ -136,8 +138,6 @@ class UpdateRule(Module):
         Args:
             state_channels: The number of state channels per automata.
             hidden_channels: The number of hidden state channels.
-            kernel_size: The size of the convolution kernel.
-            padding: The amount of padding to use.
             use_bias: Whether to compute and learn bias.
         """
         super().__init__()
@@ -146,10 +146,10 @@ class UpdateRule(Module):
 
         self._layers = Sequential(
             Conv2d(in_channels=l1_in_channels, out_channels=hidden_channels,
-                   kernel_size=kernel_size, padding=padding),
+                   kernel_size=1, padding=0),
             ReLU(),
             Conv2d(in_channels=hidden_channels, out_channels=state_channels,
-                   kernel_size=kernel_size, padding=padding, bias=use_bias)
+                   kernel_size=1, padding=0, bias=use_bias)
         )
 
         # Force initialization of second convolution layer weights.
@@ -196,8 +196,7 @@ class Model(Module):
     _is_compiled: bool
     """Whether this model has been compiled using :meth:`torch.compile`."""
 
-    def __init__(self, state_channels: int = 16,
-                 hidden_channels: int = 128, padding: int = 0,
+    def __init__(self, state_channels: int = 16, hidden_channels: int = 128,
                  update_rate: float = 0.5, step_size: int = 1.0,
                  rotation: float = 0.0, threshold: float = 0.1,
                  normalize_kernel: bool = False, use_bias: bool = False):
@@ -214,8 +213,7 @@ class Model(Module):
 
         self._perceiver = PerceptionRule(state_channels, rotation,
                                          normalize_kernel)
-        self._updater = UpdateRule(state_channels, hidden_channels, 1,
-                                   padding, use_bias)
+        self._updater = UpdateRule(state_channels, hidden_channels, use_bias)
 
         self._state_channels = state_channels
         self._step_size = step_size

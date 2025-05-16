@@ -72,3 +72,14 @@ class TestIndexingDataset:
             assert result.index == expected.index
             assert equal(result.sample, expected.sample)
             assert equal(result.target, expected.target)
+
+    @mark.parametrize('sample_count, state_channels, target_count, height, width', [
+        (1024, 30, 1024, 15, 12)
+    ])
+    def test_eq_evaluates_correctly(
+        self, sample_count: int, state_channels: int, target: Tensor
+    ):
+        expected = IndexingDataset(sample_count, state_channels, target)
+        result = IndexingDataset(sample_count, state_channels, target)
+
+        assert result == expected

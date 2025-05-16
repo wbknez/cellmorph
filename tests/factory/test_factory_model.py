@@ -23,7 +23,6 @@ class TestFactoryModel:
             "model": {
                 "state_channels": 16,
                 "hidden_channels": 128,
-                "padding": 0,
                 "update_rate": 0.5,
                 "step_size": 0.5,
                 "rotation": 0.0,
@@ -36,7 +35,6 @@ class TestFactoryModel:
             "model": {
                 "state_channels": 28,
                 "hidden_channels": 208,
-                "padding": 1,
                 "update_rate": 0.35,
                 "step_size": 0.63,
                 "rotation": 3.1417,
@@ -55,7 +53,6 @@ class TestFactoryModel:
         expected = Model(
             state_channels=config.model.state_channels,
             hidden_channels=config.model.hidden_channels,
-            padding=config.model.padding,
             update_rate=config.model.update_rate,
             step_size=config.model.step_size,
             rotation=config.model.rotation,

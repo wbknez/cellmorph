@@ -28,6 +28,7 @@ class TestSamplePool:
         pool = SamplePool(ds, batch_size=8, sampler=None)
 
         assert isinstance(pool.sampler, RandomSampler)
+        assert pool.sampler.data_source == ds
 
     def test_full_iteration_produces_unique_indices(self):
         targets = rand((1024, 4, 72, 72))

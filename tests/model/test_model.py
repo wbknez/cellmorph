@@ -112,7 +112,6 @@ class TestModel:
         model = Model(
             state_channels=state_channels,
             hidden_channels=hidden_channels,
-            padding=0,
             update_rate=update_rate,
             step_size=step_size,
             rotation=rotation,

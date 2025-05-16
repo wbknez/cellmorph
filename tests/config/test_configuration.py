@@ -60,7 +60,6 @@ def data(emoji: str, output_dir: Path, cache_dir: Path,
             "state_channels": int(rng.integers(5, 32)),
             "hidden_channels": int(rng.integers(32, 128)),
             "normalize_kernel": bool(rng.binomial(1, 0.5)),
-            "padding": int(rng.integers(0, 16)),
             "rotation": float(rng.random() * 2 * pi),
             "step_size": float(rng.random() * 2),
             "threshold": float(rng.random()),
@@ -101,8 +100,8 @@ def config(data: YAML) -> Configuration:
         data=DataConfiguration(
             target=data["data"]["target"],
             sample_count=data["data"]["sample_count"],
-            max_size=Dimension(max_size["width"], max_size["height"]),
             padding=data["data"]["padding"],
+            max_size=Dimension(max_size["width"], max_size["height"]),
             premultiply=data["data"]["premultiply"],
             cache_dir=data["data"]["cache_dir"]
         ),
@@ -110,7 +109,6 @@ def config(data: YAML) -> Configuration:
             state_channels=data["model"]["state_channels"],
             hidden_channels=data["model"]["hidden_channels"],
             normalize_kernel=data["model"]["normalize_kernel"],
-            padding=data["model"]["padding"],
             rotation=data["model"]["rotation"],
             step_size=data["model"]["step_size"],
             threshold=data["model"]["threshold"],
@@ -138,6 +136,14 @@ class TestConfiguration:
     """
     Test suite for :class:`Configuration`.
     """
+
+    def test_configuration_to_dict_produces_valid_data(self, data: YAML):
+        config = Configuration.from_dict(data)
+
+        expected = dict(data)
+        result = config.to_dict()
+
+        assert result == expected
 
     def test_configuration_saves_to_file_correctly(
         self, config: Configuration, tmp_path: Path
@@ -171,7 +177,6 @@ class TestConfiguration:
                 state_channels=data["model"]["state_channels"],
                 hidden_channels=data["model"]["hidden_channels"],
                 normalize_kernel=data["model"]["normalize_kernel"],
-                padding=data["model"]["padding"],
                 rotation=data["model"]["rotation"],
                 step_size=data["model"]["step_size"],
                 threshold=data["model"]["threshold"],

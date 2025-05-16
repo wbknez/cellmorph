@@ -1,8 +1,8 @@
-name: "gecko"
+name: "red-gecko"
 output_dir: "./model_output"
 test_frequency: 0
 data:
-  target: "🦎"
+  target: "./dataset/images/red_gecko.png"
   sample_count: 1024
   max_size:
     width: 40

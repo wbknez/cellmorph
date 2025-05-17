@@ -98,6 +98,29 @@ def random_bytes(bytes: int = 8) -> int:
     return int.from_bytes(urandom(bytes), byteorder)
 
 
+def strip_key_prefix(mapped: dict[str, object],
+                     prefix: str) -> dict[str, object]:
+    """
+    Removes the prefix from any dictionary key that contains it.
+
+    This function does not modify the original dictionary.
+
+    Args:
+        mapped: The mapping of keys to values.
+        prefix: The prefix to remove from any matching keys.
+
+    Returns:
+        A new dictionary.
+    """
+    mapped_copy = dict(mapped)
+
+    for key, value in mapped.items():
+        if key.startswith(prefix):
+            mapped_copy[key.replace(prefix, "")] = mapped_copy.pop(key)
+
+    return mapped_copy
+
+
 def unique_name(model_name: str, timestamp: datetime | None = None,
                 format: str | None = None) -> Path:
     """

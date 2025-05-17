@@ -3,6 +3,7 @@ Contains classes and functions pertaining to creating commonly used objects from
 a configuration file.
 """
 from dataclasses import astuple
+from pathlib import Path
 
 from torch import Tensor
 from torch.utils.data import RandomSampler, Sampler
@@ -71,20 +72,26 @@ class ConfigurationFactory:
         return empty_seed(config.model.state_channels, size)
 
     @classmethod
-    def model(cls, config: Configuration) -> Model:
+    def model(cls, config: Configuration,
+              weights_path: Path | None = None) -> Model:
         """
         Creates a :class:`Model` based on values from a configuration file.
 
         Please note that this model has *neither* been loaded with any
         pretrained weights nor compiled via :meth:`torch.compile`.
 
+        This function also accepts a secondary argument `weights_path` that
+        combines creating a model from a configuration file and initializing it
+        with weights from a serialized PyTorch file.
+
         Args:
             config: The configuration to use.
+            weights_path: The file location to load weights from; optional.
 
         Returns:
             A newly configured model.
         """
-        return Model(
+        model = Model(
             state_channels=config.model.state_channels,
             hidden_channels=config.model.hidden_channels,
             update_rate=config.model.update_rate,
@@ -94,6 +101,11 @@ class ConfigurationFactory:
             normalize_kernel=config.model.normalize_kernel,
             use_bias=config.model.use_bias
         )
+
+        if weights_path:
+            model = model.load(weights_path)
+
+        return model
 
     @classmethod
     def sample_pool(cls, config: Configuration,

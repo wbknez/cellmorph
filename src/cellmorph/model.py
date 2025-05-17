@@ -11,7 +11,8 @@ Gleb Sterkin's repository on Github.
      Retrieved from http://distill.pub/2020/growing-ca/
   2. Sterkin, Gleb. (2020). Cellular automata pytorch. Retrieved from
      https://github.com/belkakari/cellular-automata-pytorch
-  3. 
+  3. chenmingxiang110. (2023). Growing neural cellular automata. Retrieved from 
+     https://github.com/chenmingxiang110/Growing-Neural-Cellular-Automata
 """
 from __future__ import annotations
 from typing import override
@@ -35,6 +36,8 @@ from torch.nn import Conv2d, Module, Parameter, ReLU, Sequential
 from torch.nn.functional import conv2d, max_pool2d
 from torch.nn.init import constant_
 from torch.nn.utils import clip_grad_norm_
+
+from cellmorph.utils import strip_key_prefix
 
 
 COMPILED_PREFIX = "_orig_mod."
@@ -62,34 +65,6 @@ def is_active(x: Tensor, threshold: float = 0.1) -> Tensor:
     objs = max_pool2d(input=alpha, kernel_size=3, stride=1, padding=1)
 
     return objs > threshold
-
-
-def strip_compilation_prefix(weights: dict[str, Tensor],
-                             prefix: str) -> dict[str, Tensor]:
-    """
-    Removes the compilation prefix (typically "_orig_mod.") from any weight
-    names that contain it.
-
-    This prefix is automatically appended to all weights after the model is
-    compiled using `torch.compile`.  This function is necessary because the
-    `OptimizedModel` returned from PyTorch's compilation process overrides
-    `state_dict`, providing a copy of all weights prefixed with an identifier to
-    separate them from the original model.  However, these values are identical
-    but this process makes it impossible for uncompiled models to load these
-    weights.
-
-    Args:
-        weights: The mapping of weight names to current values.
-        prefix: The prefix to remove from any matching keys.
-
-    Returns:
-        A weight dictionary.
-    """
-    for key, value in weights.items():
-        if key.startswith(prefix):
-            weights[key.replace(prefix, "")] = weights.pop(key)
-
-    return state_dict
 
 
 class PerceptionRule(Module):
@@ -361,12 +336,22 @@ class Model(Module):
         """
         Saves the weights of this model to a specific file path.
 
+        In addition, this function removes the compilation prefix (typically
+        "_orig_mod.") from any weight names that contain it.  This prefix is
+        automatically appended to all weights after the model is compiled using
+        `torch.compile`.  This removal is necessary because the `OptimizedModel`
+        returned from PyTorch's compilation process overrides `state_dict`,
+        providing a copy of all weights prefixed with an identifier to separate
+        them from the original model.  However, these values are identical but
+        this process makes it impossible for uncompiled models to load these
+        weights without modification.
+
         Args:
             weights_path: The file location to save weights to.
         """
         weights = self.state_dict()
 
         if self.is_compiled:
-            weights = strip_compilation_prefix(weights, COMPILED_PREFIX)
+            weights = strip_key_prefix(weights, COMPILED_PREFIX)
 
         save(weights, weights_path)

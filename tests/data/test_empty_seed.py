@@ -5,8 +5,7 @@ from numpy import float32, zeros
 from pytest import mark, raises
 from torch import equal, tensor
 
-from cellmorph.data import Position, empty_seed
-from cellmorph.image import Dimension
+from cellmorph.data import Dimension, Position, empty_seed
 
 
 class TestEmptySeed:

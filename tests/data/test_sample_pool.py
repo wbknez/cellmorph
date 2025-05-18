@@ -6,6 +6,7 @@ from torch import empty, equal, rand, randperm
 from torch.utils.data import RandomSampler
 
 from cellmorph.data import (
+    Dimension,
     GrowthStrategy,
     IndexingDataset,
     Output,
@@ -13,7 +14,6 @@ from cellmorph.data import (
     SamplePool,
     empty_seed
 )
-from cellmorph.image import Dimension
 
 
 class TestSamplePool:

@@ -10,6 +10,7 @@ from torch.utils.data import RandomSampler, Sampler
 
 from cellmorph.config import Configuration
 from cellmorph.data import (
+    Dimension,
     GrowthStrategy,
     IndexingDataset,
     PersistentStrategy,
@@ -18,7 +19,6 @@ from cellmorph.data import (
     UpdateStrategy,
     empty_seed
 )
-from cellmorph.image import Dimension
 from cellmorph.model import Model
 from cellmorph.training import Trainer, load_target, prepare_target
 

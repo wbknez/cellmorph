@@ -13,8 +13,6 @@ from torch import Tensor, equal, linspace, zeros
 from torch.distributions.uniform import Uniform
 from torch.utils.data import DataLoader, RandomSampler, Sampler, TensorDataset
 
-from cellmorph.image import Dimension
-
 
 def damage_mask(sample_count: int, size: Dimension) -> Tensor:
     """
@@ -72,6 +70,52 @@ def empty_seed(state_channels: int, size: Dimension, sample_count: int = 1,
     seed[:, 3:, pos.y, pos.x] = 1.0
 
     return seed
+
+
+@dataclass(frozen=True, slots=True)
+class Dimension:
+    """
+    The size of a two dimensional image in pixels.
+    """
+
+    width: int
+    """The width, or length along the x-axis, of an image in pixels."""
+
+    height: int
+    """The height, or length along the y-axis, of an image in pixels."""
+
+    def __post_init__(self):
+        if self.width <= 0:
+            raise ValueError(f"Width must be positive: {self.width}.")
+
+        if self.height <= 0:
+            raise ValueError(f"Height must be positive: {self.height}.")
+
+    @classmethod
+    def from_image(cls, img: Image) -> Dimension:
+        """
+        Determines the dimensions of an image size.
+
+        Args:
+            img: The image to use.
+
+        Returns:
+            The size of an image as a dimension.
+        """
+        return Dimension(*img.size)
+
+    @classmethod
+    def from_tensor(cls, x: Tensor) -> Dimension:
+        """
+        Determines the dimensions of a model tensor.
+
+        Args:
+            x: The tensor to use.
+
+        Returns:
+            The size of a tensor as a dimension.
+        """
+        return Dimension(x.shape[-1], x.shape[-2])
 
 
 @dataclass(frozen=True, slots=True)

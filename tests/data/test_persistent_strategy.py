@@ -7,12 +7,12 @@ from torch import Tensor, equal, zeros_like
 
 from cellmorph.data import (
     Batch,
+    Dimension,
     PersistentStrategy,
     IndexingDataset,
     Output,
     empty_seed
 )
-from cellmorph.image import Dimension
 
 
 class TestPersistentStrategy:

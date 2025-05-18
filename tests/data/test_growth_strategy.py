@@ -7,12 +7,12 @@ from torch import Tensor, equal
 
 from cellmorph.data import (
     Batch,
+    Dimension,
     GrowthStrategy,
     IndexingDataset,
     Output,
     empty_seed
 )
-from cellmorph.image import Dimension
 
 
 class TestGrowthStrategy:

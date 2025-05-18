@@ -20,7 +20,7 @@ from torch.nn import MSELoss
 from torch.optim import Adam
 from torch.optim.lr_scheduler import MultiStepLR
 
-from cellmorph.data import Output, SamplePool, UpdateStrategy
+from cellmorph.data import Dimension, Output, SamplePool, UpdateStrategy
 from cellmorph.emoji import (
     EmojiSizes,
     fetch_emoji,
@@ -28,7 +28,6 @@ from cellmorph.emoji import (
     is_emoji,
     to_code
 )
-from cellmorph.image import Dimension, can_thumbnail, pad, to_tensor
 from cellmorph.model import Model
 
 

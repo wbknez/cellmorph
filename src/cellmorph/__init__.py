@@ -5,6 +5,7 @@ The API package for the Cellmorph project.
 from cellmorph.config import Configuration
 from cellmorph.data import (
     Batch,
+    Dimension,
     GrowthStrategy,
     IndexingDataset,
     Output,
@@ -17,6 +18,5 @@ from cellmorph.data import (
     empty_seed
 )
 from cellmorph.factory import ConfigurationFactory
-from cellmorph.image import Dimension
 from cellmorph.model import Model, PerceptionRule, UpdateRule
 from cellmorph.training import Trainer

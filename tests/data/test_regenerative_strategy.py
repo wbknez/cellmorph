@@ -7,13 +7,13 @@ from torch import Tensor, equal, manual_seed, zeros_like
 
 from cellmorph.data import (
     Batch,
+    Dimension,
     RegenerativeStrategy,
     IndexingDataset,
     Output,
     damage_mask,
     empty_seed
 )
-from cellmorph.image import Dimension
 from cellmorph.utils import random_bytes
 
 

@@ -8,7 +8,7 @@ from numpy.random import Generator
 from pytest import fixture, mark, raises
 
 from cellmorph.config import DataConfiguration
-from cellmorph.image import Dimension
+from cellmorph.data import Dimension
 
 
 @fixture(scope="function")

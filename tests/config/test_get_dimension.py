@@ -5,7 +5,7 @@ structures works as expected.
 from pytest import mark, raises
 
 from cellmorph.config import YAML, get_dimension
-from cellmorph.image import Dimension
+from cellmorph.data import Dimension
 
 
 class TestGetDimension:

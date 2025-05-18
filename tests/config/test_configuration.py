@@ -18,8 +18,8 @@ from cellmorph.config import (
     TrainingConfiguration,
     YAML
 )
+from cellmorph.data import Dimension
 from cellmorph.emoji import CommonEmojis
-from cellmorph.image import Dimension
 
 
 @fixture(scope="function")

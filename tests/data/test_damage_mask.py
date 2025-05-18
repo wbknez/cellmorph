@@ -5,8 +5,7 @@ from pytest import mark
 from torch import equal, linspace, manual_seed, rand
 from torch.distributions.uniform import Uniform
 
-from cellmorph.data import damage_mask
-from cellmorph.image import Dimension
+from cellmorph.data import Dimension, damage_mask
 
 
 class TestDamageMask:

@@ -9,8 +9,8 @@ from pathlib import Path
 from numpy import pi
 from yaml import CLoader, dump, load
 
+from cellmorph.data import Dimension
 from cellmorph.emoji import CommonEmojis
-from cellmorph.image import Dimension
 from cellmorph.training import Interval
 
 

@@ -2,6 +2,8 @@
 Contains a collection of project-specific tensor operations written as PyTorch
 transformations to allow arbitrary composition.
 """
+from typing import Any
+
 from PIL.Image import Image
 from torch import Tensor
 from torchvision.transforms.v2 import Transform
@@ -30,7 +32,8 @@ class Clip(Transform):
         self._min = min
         self._max = max
 
-    def transform(self, inpt: Tensor) -> Tensor:
+    def transform(self, inpt: Tensor,
+                  _: dict[str, Any] | None = None) -> Tensor:
         """
         Transforms an input tensor into a tensor whose values are constrained by
         a minimum and maximum.
@@ -56,7 +59,8 @@ class Premultiply(Transform):
     def __init__(self):
         super().__init__()
 
-    def transform(self, inpt: Tensor) -> Tensor:
+    def transform(self, inpt: Tensor,
+                  _: dict[str, Any] | None = None) -> Tensor:
         """
         Transforms an input tensor into a tensor whose values are defined by the
         multiplication of the RGB channels by the alpha channel.
@@ -70,13 +74,16 @@ class Premultiply(Transform):
         if not isinstance(inpt, Tensor):
             raise TypeError("Premultiply input must be a tensor.")
 
-        if len(inpt.shape) != 4:
-            raise ValueError("Premultiply input must be a 4D tensor.")
+        if not 3 <= len(inpt.shape) <= 4:
+            raise ValueError("Premultiply input must be a 3D or 4D tensor.")
 
         if inpt.shape[1] < 4:
             raise ValueError("Premultiply requires at least 4 channels.")
 
-        return inpt[:, :3, ...] * inpt[:, 3:4, ...]
+        is_4d = len(inpt.shape) == 4
+
+        return inpt[:, :3, ...] * inpt[:, 3:4, ...] if is_4d else \
+            inpt[:3, ...] * inpt[3:4, ...]
 
 
 class Squeeze(Transform):
@@ -93,7 +100,8 @@ class Squeeze(Transform):
 
         self._axis = axis
 
-    def transform(self, inpt: Tensor) -> Tensor:
+    def transform(self, inpt: Tensor,
+                  _: dict[str, Any] | None = None) -> Tensor:
         """
         Removes a single axis from a :class:`Tensor`.
 
@@ -120,7 +128,8 @@ class ToImage(Transform):
     def __init__(self):
         super().__init__()
 
-    def transform(self, inpt: Tensor) -> Image:
+    def transform(self, inpt: Tensor,
+                  _: dict[str, Any] | None = None) -> Image:
         """
         Transforms an input tensor into an image.
 
@@ -151,7 +160,8 @@ class ToRgb(Transform):
     def __init__(self):
         super().__init__()
 
-    def transform(self, inpt: Tensor) -> Tensor:
+    def transform(self, inpt: Tensor,
+                  _: dict[str, Any] | None = None) -> Tensor:
         """
         Transforms an input tensor into a three-channel RGB tensor.
 
@@ -185,7 +195,8 @@ class ToRgba(Transform):
     def __init__(self):
         super().__init__()
 
-    def transform(self, inpt: Tensor) -> Tensor:
+    def transform(self, inpt: Tensor,
+                  _: dict[str, Any] | None = None) -> Tensor:
         """
         Transforms an input tensor into a four-channel RGBA tensor.
 

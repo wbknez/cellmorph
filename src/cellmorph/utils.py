@@ -7,6 +7,7 @@ from math import prod
 from os import urandom
 from pathlib import Path
 from sys import byteorder
+from typing import Any
 
 from torch import device
 from torch.backends.mps import is_available as is_mps_available
@@ -42,8 +43,8 @@ def choose_device(override: int | str | device | None = None) -> device:
     return device(override)
 
 
-def combine_dicts(original: dict[str, object],
-                  updates: dict[str, object]) -> dict[str, object]:
+def combine_dicts(original: dict[str, Any],
+                  updates: dict[str, Any]) -> dict[str, Any]:
     """
     Combines the keys and values of one dictionary into another.
 
@@ -98,8 +99,8 @@ def random_bytes(bytes: int = 8) -> int:
     return int.from_bytes(urandom(bytes), byteorder)
 
 
-def strip_key_prefix(mapped: dict[str, object],
-                     prefix: str) -> dict[str, object]:
+def strip_key_prefix(mapped: dict[str, Any],
+                     prefix: str) -> dict[str, Any]:
     """
     Removes the prefix from any dictionary key that contains it.
 

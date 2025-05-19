@@ -1,9 +1,12 @@
 """
-
+A package that contains multiple useful transformations for use with target
+images and output tensors.
 """
+from typing import Any
+
 from PIL.Image import Image
 from torch import Tensor
-from torchvision.transforms.v2 import Transform
+from torchvision.transforms.v2 import Compose, Transform
 
 from cellmorph.transforms.image import Pad, Resize, ToTensor
 from cellmorph.transforms.tensor import (
@@ -24,7 +27,8 @@ class Pass(Transform):
     def __init__(self):
         super().__init__()
 
-    def transform(self, inpt: Image | Tensor) -> Image | Tensor:
+    def transform(self, inpt: Image | Tensor,
+                  _: dict[str, Any] | None = None) -> Image | Tensor:
         """
         Returns any input without modification.
 

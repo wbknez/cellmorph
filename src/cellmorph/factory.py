@@ -7,6 +7,7 @@ from pathlib import Path
 
 from torch import Tensor
 from torch.utils.data import RandomSampler, Sampler
+from torchvision.transforms.v2 import Compose, Transform
 
 from cellmorph.config import Configuration
 from cellmorph.data import (
@@ -20,7 +21,8 @@ from cellmorph.data import (
     empty_seed
 )
 from cellmorph.model import Model
-from cellmorph.training import Trainer, load_target, prepare_target
+from cellmorph.training import Trainer, load_target
+from cellmorph.transforms import Pad, Pass, Premultiply, Resize, ToTensor
 
 
 class ConfigurationFactory:
@@ -30,8 +32,8 @@ class ConfigurationFactory:
     """
 
     @classmethod
-    def dataset(cls, config: Configuration,
-                targets: Tensor | None = None) -> IndexingDataset:
+    def dataset(cls, config: Configuration, targets: Tensor | None = None,
+                transform: Transform | None = None) -> IndexingDataset:
         """
         Creates an :class:`IndexingDataset` based on values from a configuration
         file.
@@ -39,12 +41,13 @@ class ConfigurationFactory:
         Args:
             config: The configuration file to use.
             targets: The training targets; optional.
+            transform: Any target-specific transformations to apply.
 
         Returns:
             A newly configured dataset.
         """
         if targets is None:
-            targets = ConfigurationFactory.targets(config)
+            targets = ConfigurationFactory.targets(config, transform)
 
         return IndexingDataset(
             sample_count=config.data.sample_count, 
@@ -166,7 +169,8 @@ class ConfigurationFactory:
                 raise ValueError(f"Unknown update strategy: {strategy_name}.")
 
     @classmethod
-    def targets(cls, config: Configuration) -> Tensor:
+    def targets(cls, config: Configuration,
+                transform: Transform | None = None) -> Tensor:
         """
         Creates a collection of training targets from a configuration file.
 
@@ -175,18 +179,21 @@ class ConfigurationFactory:
 
         Args:
             config: The configuration to use.
+            transform: One or more transformations to apply.
 
         Returns:
             A multi-dimensional target tensor.
         """
-        target = config.data.target
+        if not transform:
+            transform = ConfigurationFactory.transforms(config)
+
+        target_source = config.data.target
         cache_dir = config.data.cache_dir
 
-        with load_target(target, cache_dir=cache_dir) as img:
-            target = prepare_target(img, config.data.max_size, config.data.padding,
-                                    config.data.premultiply)
+        img = load_target(target_source, cache_dir=cache_dir)
+        target = transform(img)
 
-            return target.repeat((config.data.sample_count, 1, 1, 1))
+        return target.repeat((config.data.sample_count, 1, 1, 1))
 
     @classmethod
     def trainer(cls, config: Configuration, model: Model,
@@ -213,3 +220,15 @@ class ConfigurationFactory:
             gamma=config.optim.gamma,
             gradient_cutoff=config.optim.gradient_cutoff
         )
+
+    @classmethod
+    def transforms(cls, config: Configuration) -> Transform:
+        """
+
+        """
+        return Compose([
+            Resize(config.data.max_size),
+            Pad(config.data.padding),
+            ToTensor(),
+            Premultiply() if config.data.premultiply else Pass()
+        ])

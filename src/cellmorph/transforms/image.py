@@ -3,6 +3,7 @@ Contains a collection of project-specific image operations written as PyTorch
 transformations to allow arbitrary composition.
 """
 from dataclasses import astuple
+from typing import Any
 
 from PIL import Image as ImageFactory
 from PIL.Image import Image
@@ -40,7 +41,7 @@ class Pad(Transform):
         self._amount = amount
         self._fill_color = fill_color
 
-    def transform(self, inpt: Image) -> Image:
+    def transform(self, inpt: Image, _: dict[str, Any] | None = None) -> Image:
         """
         Adds a layer of pixel padding around an image.
 
@@ -82,7 +83,7 @@ class Resize(Transform):
 
         self._size = size
 
-    def transform(self, inpt: Image) -> Image:
+    def transform(self, inpt: Image, _: dict[str, Any] | None = None) -> Image:
         """
         Transforms an input image into a differently sized version of itself.
 
@@ -106,7 +107,7 @@ class ToTensor(Transform):
     def __init__(self):
         super().__init__()
 
-    def transform(self, inpt: Image) -> Tensor:
+    def transform(self, inpt: Image, _: dict[str, Any] | None = None) -> Tensor:
         """
         Transforms an input image into a tensor.
 

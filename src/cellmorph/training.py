@@ -20,7 +20,7 @@ from torch.nn import MSELoss
 from torch.optim import Adam
 from torch.optim.lr_scheduler import MultiStepLR
 
-from cellmorph.data import Dimension, Output, SamplePool, UpdateStrategy
+from cellmorph.data import Output, SamplePool, UpdateStrategy
 from cellmorph.emoji import (
     EmojiSizes,
     fetch_emoji,
@@ -56,32 +56,12 @@ def load_target(img_path: Path | str, emoji_size: int = EmojiSizes.i128,
         else:
             img_path = Path(img_path).resolve()
 
-    return ImageFactory.open(img_path)
+    img = ImageFactory.open(img_path)
 
+    if img.fp:
+        img.load()
 
-def prepare_target(img: Image, max_size: Dimension | None = None,
-                   padding: int = 16, premultiply: bool = True) -> Tensor:
-    """
-    Formats a target image as training input to an NCA model.
-
-    Args:
-        img: The image to manipulate.
-        max_size: The new desired size.
-        padding: The amount of extra space to add in all directions (top, left,
-        right, and bottom).
-        premultiply: Whether to premultiply the RGB components by the alpha
-        channel.
-
-    Returns:
-        A formatted image as a four-dimensional PyTorch tensor.
-    """
-    if max_size and can_thumbnail(Dimension.from_image(img), max_size):
-        img.thumbnail(astuple(max_size), ImageFactory.LANCZOS)
-
-    if padding:
-        img = pad(img, padding)
-
-    return to_tensor(img, premultiply=premultiply)
+    return img
 
 
 @dataclass(frozen=True, slots=True)

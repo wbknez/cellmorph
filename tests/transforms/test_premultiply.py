@@ -20,12 +20,12 @@ class TestPremultiply:
         with raises(TypeError):
             Premultiply().transform(img)
 
-    def test_transform_raises_if_inpt_is_not_4D(self):
+    def test_transform_raises_if_inpt_is_not_3D_or_4D(self):
         with raises(ValueError):
             Premultiply().transform(rand((1, 1, 1, 1, 1)))
 
         with raises(ValueError):
-            Premultiply().transform(rand((1, 1, 1)))
+            Premultiply().transform(rand((1, 1)))
 
     def test_transform_raises_if_number_of_channels_is_less_than_four(self):
         with raises(ValueError):

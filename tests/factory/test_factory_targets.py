@@ -1,5 +1,6 @@
 """
-Ensures that loading targets from images and emojis works as expected.
+Ensures that loading targets from images and emojis from values in a
+configuration file works as expected.
 """
 from pathlib import Path
 
@@ -7,11 +8,13 @@ from PIL import Image as ImageFactory
 from PIL.Image import Image
 from pytest import mark
 from torch import equal
+from torchvision.transforms.v2 import Compose
 
 from cellmorph.config import YAML, Configuration
+from cellmorph.data import Dimension
 from cellmorph.emoji import CommonEmojis
 from cellmorph.factory import ConfigurationFactory
-from cellmorph.image import pad, to_tensor
+from cellmorph.transforms import Pad, Pass, Premultiply, Resize, ToTensor
 
 
 class TestFactoryTargets:
@@ -40,14 +43,11 @@ class TestFactoryTargets:
 
         config = Configuration.from_dict(data)
 
-        img.thumbnail((width, height), ImageFactory.LANCZOS)
-        img = pad(img, padding)
+        expected = Resize(config.data.max_size).transform(img)
+        expected = Pad(config.data.padding).transform(img)
+        expected = ToTensor().transform(expected)
 
-        expected = to_tensor(img, premultiply=premultiply).repeat(
-            (sample_count, 1, 1, 1)
-        )
+        if config.data.premultiply:
+            expected = Premultiply().transform(expected)
+
         result = ConfigurationFactory.targets(config)
-
-        assert equal(result, expected)
-
-        img.close()

@@ -36,6 +36,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+animation = [ "ffmpeg" ]
+beam = [ "beam-client" ]
 test = ["pytest"]
 
 [project.urls]

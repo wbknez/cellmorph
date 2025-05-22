@@ -81,9 +81,14 @@ class Premultiply(Transform):
             raise ValueError("Premultiply requires at least 4 channels.")
 
         is_4d = len(inpt.shape) == 4
+        premult = inpt.clone().detach()
 
-        return inpt[:, :3, ...] * inpt[:, 3:4, ...] if is_4d else \
-            inpt[:3, ...] * inpt[3:4, ...]
+        if is_4d:
+            premult[:, :3, ...] *= premult[:, 3:4, ...]
+        else:
+            premult[:3, ...] *= premult[3:4, ...]
+
+        return premult
 
 
 class Squeeze(Transform):

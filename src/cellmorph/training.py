@@ -251,6 +251,9 @@ class Trainer:
             samples = self._model(samples)
 
         logger.info("Calculating batch-specific loss.")
+
+        logger.debug("Sample shape: {}.", samples.shape)
+        logger.debug("Target shape: {}.", targets.shape)
         batch_loss = self._batch_criterion(samples[:, :4], targets[:, :4])
 
         logger.info("Batch loss: {}.", batch_loss.item())

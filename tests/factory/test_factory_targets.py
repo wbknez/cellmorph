@@ -44,10 +44,12 @@ class TestFactoryTargets:
         config = Configuration.from_dict(data)
 
         expected = Resize(config.data.max_size).transform(img)
-        expected = Pad(config.data.padding).transform(img)
+        expected = Pad(config.data.padding).transform(expected)
         expected = ToTensor().transform(expected)
 
         if config.data.premultiply:
             expected = Premultiply().transform(expected)
 
         result = ConfigurationFactory.targets(config)
+
+        assert result.shape[1] == 4

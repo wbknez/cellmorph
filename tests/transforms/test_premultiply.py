@@ -32,13 +32,18 @@ class TestPremultiply:
             Premultiply().transform(rand((1, 3, 16, 16)))
 
     @mark.parametrize('tnsr', [
-        rand((1, 16, 72, 72))
+        rand((1, 16, 72, 72)),
+        rand((15, 47, 47))
     ])
     def test_transform_multiplies_rbg_by_alpha(self, tnsr: Tensor):
-        rgb = tnsr[:, :3]
-        alpha = tnsr[:, 3:4]
 
-        expected = rgb * alpha
+        expected = tnsr.clone()
+        if len(tnsr.shape) == 4:
+            expected[:, :3, ...] *= expected[:, 3:4, ...]
+        else:
+            expected[:3, ...] *= expected[3:4, ...]
+
         result = Premultiply().transform(tnsr)
 
         assert equal(result, expected)
+        assert result.shape == tnsr.shape

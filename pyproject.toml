@@ -60,6 +60,9 @@ test-extras = ["test"]
 test-skip = ["*universal2:arm64"]
 build-verbosity = 1
 
+[tool.setuptools.packages.find]
+where = [ "src" ]
+
 [project.scripts]
 cm-train = "cellmorph.app.cm_train:launch"
 beam-train = "cellmorph.app.beam_train:launch"

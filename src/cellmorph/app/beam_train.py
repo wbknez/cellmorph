@@ -24,6 +24,7 @@ Command-line arguments:
       the configuration file.
 """
 from argparse import Namespace
+from pathlib import Path
 
 from beam import Image, Volume, task_queue
 from loguru import logger

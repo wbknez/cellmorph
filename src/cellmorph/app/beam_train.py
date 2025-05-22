@@ -24,6 +24,7 @@ Command-line arguments:
       the configuration file.
 """
 from argparse import Namespace
+from typing import Any
 
 from beam import Image, Volume, task_queue
 from loguru import logger
@@ -47,7 +48,7 @@ from cellmorph.app.cm_train import main, parse_args
     ]),
     volumes=[Volume(name="model-output", mount_path="model_output")]
 )
-def submit(args: Namespace):
+def submit(json_args: dict[str, Any]):
     """
     Creates a Beam.Cloud task that trains a single neural cellular automata
     model using GPU acceleration.
@@ -57,6 +58,7 @@ def submit(args: Namespace):
         any.
     """
     try:
+        args = Namespace(**json_args)
         main(args)
         exit(0)
     except Exception as e:
@@ -83,7 +85,7 @@ def launch():
     object.__setattr__(args, "compile", True)
     object.__setattr__(args, "quiet", True)
     
-    submit.put(args)
+    submit.put(vars(args))
 
 
 if __name__ == "__main__":

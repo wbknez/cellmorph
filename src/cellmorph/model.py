@@ -21,6 +21,7 @@ from numpy import cos, sin
 from torch import (
     Tensor,
     compile as torch_compile,
+    device as torch_device,
     float32,
     from_numpy,
     load,
@@ -314,7 +315,8 @@ class Model(Module):
 
         return x1 * survivors.to(x.device)
 
-    def load(self, weights_path: Path) -> Model:
+    def load(self, weights_path: Path,
+             device: torch_device | None = None) -> Model:
         """
         Loads all layer weights from a specific file path.
 
@@ -324,15 +326,21 @@ class Model(Module):
 
         Args:
             weights_path: The file location to load weights from.
+            device: 
 
         Returns:
             A reference to this model for easy chaining.
         """
-        self.load_state_dict(load(weights_path, weights_only=True))
+        if not device:
+            device = torch_device("cpu")
+
+        weights = load(weights_path, weights_only=True, map_location=device)
+
+        self.load_state_dict(weights)
 
         return self
 
-    def save(self, weights_path: Path):
+    def save(self, weights_path: Path, device: torch_device | None = None):
         """
         Saves the weights of this model to a specific file path.
 
@@ -348,8 +356,15 @@ class Model(Module):
 
         Args:
             weights_path: The file location to save weights to.
+            device: c:w
+            
         """
-        weights = self.state_dict()
+        if not device:
+            device = torch_device("cpu")
+
+        weights = {
+            name: param.to(device) for name, param in self.state_dict()
+        }
 
         if self.is_compiled:
             weights = strip_key_prefix(weights, COMPILED_PREFIX)

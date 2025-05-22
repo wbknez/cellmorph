@@ -34,3 +34,5 @@ drive/MyDrive
 *.md
 License.txt
 **/dataset/raw/**
+scratch.py
+todo.md

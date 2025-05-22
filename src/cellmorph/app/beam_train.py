@@ -90,7 +90,7 @@ def launch():
         if isinstance(args[key], Path):
             args[key] = str(args[key])
     
-    submit.put(vars(args))
+    submit.put(args)
 
 
 if __name__ == "__main__":

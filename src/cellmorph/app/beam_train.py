@@ -80,12 +80,23 @@ def launch():
            to "INFO" or "DEBUG" will accomplish this goal without clogging
            network traffic.
     """
-    args = parse_args()
+    args = vars(parse_args())
 
+    args["compile"] = True
+    args["quiet"] = True
+
+    for key in args.keys():
+        if isinstance(args[key], Path):
+            args[key] = str(args[key])
+
+<<<<<<< HEAD
     object.__setattr__(args, "compile", True)
     object.__setattr__(args, "quiet", True)
     
     submit.put(vars(args))
+=======
+    submit.put(args)
+>>>>>>> 25a2c3e (Update beam_train to use JSON serializable arguments.)
 
 
 if __name__ == "__main__":

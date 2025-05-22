@@ -35,7 +35,7 @@ from cellmorph.app.cm_train import main, parse_args
     cpu=2,
     memory="8Gi",
     gpu="T4",
-    image=Image(python_packages=[
+    image=Image(python_version="python3.12", python_packages=[
         "loguru",
         "numpy",
         "pillow",

@@ -47,16 +47,18 @@ from cellmorph.app.cm_train import main, parse_args
     ]),
     volumes=[Volume(name="model-output", mount_path="model_output")]
 )
-def submit(args: Namespace):
+def submit(json_args: Namespace):
     """
     Creates a Beam.Cloud task that trains a single neural cellular automata
     model using GPU acceleration.
 
     Args:
-        args: A collection of command line arguments and associated values, if
-        any.
+        json_args: A JSON serializable collection of command line arguments and
+        associated values, if any.
     """
     try:
+        args = Namespace(**json_args)
+
         main(args)
         exit(0)
     except Exception as e:
@@ -78,10 +80,14 @@ def launch():
            to "INFO" or "DEBUG" will accomplish this goal without clogging
            network traffic.
     """
-    args = parse_args()
+    args = vars(parse_args())
 
-    object.__setattr__(args, "compile", True)
-    object.__setattr__(args, "quiet", True)
+    args["compile"] = True
+    args["quiet"] = True
+
+    for key in args.keys():
+        if isinstance(args[key], Path):
+            args[key] = str(args[key])
     
     submit.put(vars(args))
 

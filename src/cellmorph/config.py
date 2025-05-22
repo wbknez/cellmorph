@@ -474,7 +474,7 @@ class Configuration:
         values["data"]["cache_dir"] = str(self.data.cache_dir)
 
         with open(file_path, "w") as f:
-            f.write(dump(values))
+            f.write(dump(values, sort_keys=False))
 
     def to_dict(self) -> YAML:
         """

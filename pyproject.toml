@@ -30,6 +30,7 @@ dependencies = [
     "loguru",
     "numpy",
     "pillow",
+    "pyyaml",
     "requests",
     "torch",
     "torchvision",

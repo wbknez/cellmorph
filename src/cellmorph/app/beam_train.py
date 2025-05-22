@@ -40,6 +40,7 @@ from cellmorph.app.cm_train import main, parse_args
         "loguru",
         "numpy",
         "pillow",
+        "pyyaml",
         "requests",
         "torch",
         "torchvision",

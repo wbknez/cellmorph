@@ -1,6 +1,6 @@
 # Build file for the "sirmodels" project.
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,6 +11,7 @@ readme = "Readme.md"
 authors = [
     { name = "Will Knez", email = "wknez@asu.edu" }
 ]
+license-files = [ "License.txt" ]
 requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 5 :: Production/Stable",
@@ -36,7 +37,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-animation = [ "ffmpeg" ]
+animation = [ "ffmpeg", "matplotlib" ]
 beam = [ "beam-client" ]
 test = ["pytest"]
 
@@ -61,3 +62,4 @@ build-verbosity = 1
 
 [project.scripts]
 cm-train = "cellmorph.app.cm_train:launch"
+beam-train = "cellmorph.app.beam_train:launch"

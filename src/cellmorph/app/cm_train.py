@@ -4,12 +4,16 @@
 """
 Fully trains a neural cellular automata model.
 
-Command-line Arguments:
+Command-line arguments:
     - "-c"/"--config-file": The path to a configuration file containing all
       necessary values and parameters to both create a model and train it.  This
       path may be either absolute or relative; however, it must obviously exist
       in order for the program to continue.
-    - "-e"/"--epochs": 
+    - "-C"/"--compile": Requests that the model be compiled before use.  In most
+      causes, this will result in a substantial performance improvement even
+      before utilizing GPU acceleration.
+    - "-e"/"--epochs": Specifies a custom number of training epochs that
+      overrides that in the configuration file.
     - "-l"/"--logging-level": The global logging level that determines which
       logging messages appear in the model-specific log file.  Any option other
       than "off" will filter messages such that if a message's level is beneath
@@ -17,11 +21,15 @@ Command-line Arguments:
       disable logging will result in silencing *all* logging output, including
       any exceptions that are thrown in functions decorated with
       `@logger.catch` with the sole exception of `main`.
+    - "-n"/"--name": Specifies a custom model name that overrides that in the
+      configuration file.
     - "-q"/"--quiet": Silences all command-line textual output.  By default,
       this program produces a nicely formatted progress bar to visually track
       the training progress of a model.  Invoking this option removes this as
       well as any `stdout` or `stderr` specific output such as separate logging
       handlers that write to those streams.
+    - "-t"/"--target": Specifies a custom training target that overrides that in
+      the configuration file.
 """
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -103,7 +111,16 @@ def create_progress_bar(epochs: int, disabled: bool) -> tqdm:
 
 def combine_with_args(config: Configuration, args: Namespace) -> Configuration:
     """
+    Updates a configuration with additional user-chosen command-line values.
 
+    Any values in the original configuration are overwritten as necessary.
+
+    Args:
+        config: The configuration to update.
+        args: The command-line values to use.
+
+    Returns:
+        A new configuration.
     """
     values = config.to_dict()
 
@@ -112,6 +129,9 @@ def combine_with_args(config: Configuration, args: Namespace) -> Configuration:
 
     if args.epochs:
         values["train"]["epochs"] = args.epochs
+
+    if args.target:
+        values["data"]["target"] = args.target
 
     return Configuration.from_dict(values)
 
@@ -173,19 +193,18 @@ def parse_args() -> Namespace:
                         help="override model name")
     parser.add_argument("-q", "--quiet", action="store_true", default=False,
                         help="disable textual output")
+    parser.add_argument("-t", "--target", type=str, default=None,
+                        help="override training target")
 
     return parser.parse_args()
 
 
-def main(args: Namespace) -> int:
+def main(args: Namespace):
     """
-    The application entry point for this project.
+    Trains a single neural cellular automata over one or more epochs.
 
     Args:
         args: A collection of command line arguments and their values, if any.
-
-    Returns:
-        An exit code.
     """
     logger.remove()
     logger.add(stdout, format=LOG_FORMAT, level="ERROR", colorize=True)
@@ -248,12 +267,10 @@ def main(args: Namespace) -> int:
 
     save(model_dir, config, model, losses)
 
-    return 0
-
 
 def launch():
     """
-    pass
+    The application entry point for this script.
     """
     try:
         main(args=parse_args())

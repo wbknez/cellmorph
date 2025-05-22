@@ -33,3 +33,4 @@ drive/MyDrive
 *.sh
 *.md
 License.txt
+**/dataset/raw/**
